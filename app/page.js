@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import PhoneComparison from "./components/PhoneComparison";
+import LaptopComparison from "./components/LaptopComparison";
+import CategorySelector from "./components/CategorySelector";
 
 // Format bot response for better readability
 function formatBotResponse(text) {
@@ -20,7 +22,7 @@ export default function Page() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("All");
+  const [category, setCategory] = useState("smartphone"); // smartphone or laptop
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,7 +62,7 @@ export default function Page() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({ message: userMessage, category: category }),
       });
 
       const data = await res.json();
@@ -262,46 +264,90 @@ export default function Page() {
         <div className="chat-messages" ref={chatMessagesRef}>
           {messages.length === 0 ? (
             <div className="welcome-screen">
-              <div className="welcome-logo">📱</div>
-              <h1 className="welcome-title">Compare Smartphones Side-by-Side</h1>
+              <div className="welcome-logo">{category === 'smartphone' ? '📱' : '💻'}</div>
+              <h1 className="welcome-title">
+                {category === 'smartphone' ? 'Compare Smartphones Side-by-Side' : 'Compare Laptops Side-by-Side'}
+              </h1>
               <p className="welcome-subtitle">
-                Get detailed comparisons of smartphones with pricing in Indian Rupees (₹),
-                real specifications, pros & cons, and expert recommendations tailored for the Indian market.
+                {category === 'smartphone'
+                  ? 'Get detailed comparisons of smartphones with pricing in Indian Rupees (₹), real specifications, pros & cons, and expert recommendations tailored for the Indian market.'
+                  : 'Get detailed comparisons of laptops with pricing in Indian Rupees (₹), real specifications, pros & cons, and expert recommendations tailored for the Indian market.'}
               </p>
 
+              <CategorySelector selectedCategory={category} onCategoryChange={setCategory} />
+
               <div className="prompt-templates">
-                <div
-                  className="template-card"
-                  onClick={() => handleTemplateClick("Compare iPhone 15 and Samsung Galaxy S24")}
-                >
-                  <div className="template-icon">🍎</div>
-                  <div className="template-title">Flagship Comparison</div>
-                  <div className="template-description">
-                    Compare premium flagship phones like iPhone 15 vs Samsung Galaxy S24
-                  </div>
-                </div>
+                {category === 'smartphone' ? (
+                  <>
+                    <div
+                      className="template-card"
+                      onClick={() => handleTemplateClick("Compare iPhone 15 and Samsung Galaxy S24")}
+                    >
+                      <div className="template-icon">🍎</div>
+                      <div className="template-title">Flagship Comparison</div>
+                      <div className="template-description">
+                        Compare premium flagship phones like iPhone 15 vs Samsung Galaxy S24
+                      </div>
+                    </div>
 
-                <div
-                  className="template-card"
-                  onClick={() => handleTemplateClick("Compare OnePlus 12 and Nothing Phone 2")}
-                >
-                  <div className="template-icon">⚡</div>
-                  <div className="template-title">Performance Phones</div>
-                  <div className="template-description">
-                    Compare performance-focused devices with detailed specs
-                  </div>
-                </div>
+                    <div
+                      className="template-card"
+                      onClick={() => handleTemplateClick("Compare OnePlus 12 and Nothing Phone 2")}
+                    >
+                      <div className="template-icon">⚡</div>
+                      <div className="template-title">Performance Phones</div>
+                      <div className="template-description">
+                        Compare performance-focused devices with detailed specs
+                      </div>
+                    </div>
 
-                <div
-                  className="template-card"
-                  onClick={() => handleTemplateClick("Compare Pixel 8 and Vivo V29")}
-                >
-                  <div className="template-icon">📸</div>
-                  <div className="template-title">Camera Comparison</div>
-                  <div className="template-description">
-                    Compare camera quality and photography features
-                  </div>
-                </div>
+                    <div
+                      className="template-card"
+                      onClick={() => handleTemplateClick("Compare Pixel 8 and Vivo V29")}
+                    >
+                      <div className="template-icon">📸</div>
+                      <div className="template-title">Camera Comparison</div>
+                      <div className="template-description">
+                        Compare camera quality and photography features
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="template-card"
+                      onClick={() => handleTemplateClick("Compare MacBook Pro 14 and Dell XPS 15")}
+                    >
+                      <div className="template-icon">💼</div>
+                      <div className="template-title">Professional Laptops</div>
+                      <div className="template-description">
+                        Compare premium laptops for professionals and creators
+                      </div>
+                    </div>
+
+                    <div
+                      className="template-card"
+                      onClick={() => handleTemplateClick("Compare ASUS ROG Strix and MSI Katana")}
+                    >
+                      <div className="template-icon">🎮</div>
+                      <div className="template-title">Gaming Laptops</div>
+                      <div className="template-description">
+                        Compare gaming-focused laptops with GPU and performance specs
+                      </div>
+                    </div>
+
+                    <div
+                      className="template-card"
+                      onClick={() => handleTemplateClick("Compare HP Pavilion and Lenovo IdeaPad")}
+                    >
+                      <div className="template-icon">🎓</div>
+                      <div className="template-title">Budget Laptops</div>
+                      <div className="template-description">
+                        Compare value-for-money laptops for students and everyday use
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -309,7 +355,11 @@ export default function Page() {
               {messages.map((msg, i) => (
                 <div key={i} className={`message ${msg.role}`}>
                   {msg.isComparison ? (
-                    <PhoneComparison data={msg.data} />
+                    msg.data.phone1 ? (
+                      <PhoneComparison data={msg.data} />
+                    ) : (
+                      <LaptopComparison data={msg.data} />
+                    )
                   ) : (
                     <div className="message-content">{msg.text}</div>
                   )}
@@ -317,7 +367,9 @@ export default function Page() {
               ))}
               {loading && (
                 <div className="message bot loading">
-                  <div className="message-content">Analyzing phones and comparing...</div>
+                  <div className="message-content">
+                    {category === 'smartphone' ? 'Analyzing phones and comparing...' : 'Analyzing laptops and comparing...'}
+                  </div>
                 </div>
               )}
             </>
