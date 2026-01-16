@@ -103,6 +103,46 @@ export default function Page() {
     setInput(templateText);
   };
 
+  // Handle geek mode request
+  const handleGeekModeRequest = async (laptop1, laptop2) => {
+    const geekMessage = `Show me detailed geek mode comparison with gaming FPS, rendering benchmarks, and all technical details for ${laptop1.brand} ${laptop1.name} vs ${laptop2.brand} ${laptop2.name}`;
+
+    const newMessages = [...messages, { role: "user", text: "🤓 Requesting geek mode details..." }];
+    setMessages(newMessages);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: geekMessage,
+          category: category,
+          geekMode: true
+        }),
+      });
+
+      const data = await res.json();
+      let updatedMessages;
+
+      if (data.reply && typeof data.reply === 'object' && data.reply.comparison) {
+        updatedMessages = [...newMessages, { role: "bot", isComparison: true, data: data.reply }];
+      } else {
+        const formattedReply = formatBotResponse(data.reply?.message || data.rawText);
+        updatedMessages = [...newMessages, { role: "bot", text: formattedReply }];
+      }
+
+      setMessages(updatedMessages);
+      saveCurrentChat(updatedMessages);
+    } catch (error) {
+      const errorMessages = [...newMessages, { role: "bot", text: "Sorry, couldn't load geek details. Please try again." }];
+      setMessages(errorMessages);
+      saveCurrentChat(errorMessages);
+    }
+
+    setLoading(false);
+  };
+
   // Save current chat to history
   const saveCurrentChat = (newMessages) => {
     if (newMessages.length === 0) return;
@@ -358,7 +398,7 @@ export default function Page() {
                     msg.data.phone1 ? (
                       <PhoneComparison data={msg.data} />
                     ) : (
-                      <LaptopComparison data={msg.data} />
+                      <LaptopComparison data={msg.data} onRequestGeekMode={handleGeekModeRequest} />
                     )
                   ) : (
                     <div className="message-content">{msg.text}</div>

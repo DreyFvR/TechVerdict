@@ -8,7 +8,7 @@ export default function LaptopComparison({ data, onRequestGeekMode }) {
     return null;
   }
 
-  const { laptop1, laptop2, comparison, prosConsIndianMarket, finalVerdict, bestFor, comparisonMode, showGeekDetailsOption } = data;
+  const { laptop1, laptop2, comparison, prosConsIndianMarket, finalVerdict, bestFor, comparisonMode, showGeekDetailsOption, geekDetails } = data;
 
   // Generate Amazon India search URLs for laptops
   const getAmazonUrl = (laptopName) => {
@@ -35,7 +35,7 @@ export default function LaptopComparison({ data, onRequestGeekMode }) {
   const handleGeekModeRequest = () => {
     setShowingGeekMode(true);
     if (onRequestGeekMode) {
-      onRequestGeekMode();
+      onRequestGeekMode(laptop1, laptop2);
     }
   };
 
@@ -128,18 +128,6 @@ export default function LaptopComparison({ data, onRequestGeekMode }) {
         ))}
       </div>
 
-      {/* Geek Mode Button */}
-      {comparisonMode === 'brief' && showGeekDetailsOption && !showingGeekMode && (
-        <div className="geek-mode-section">
-          <button className="geek-mode-btn" onClick={handleGeekModeRequest}>
-            🤓 Show Geek Details (Technical Deep Dive)
-          </button>
-          <p className="geek-mode-hint">
-            Get detailed specs: benchmark scores, TGP, RAM speeds, color accuracy, and more!
-          </p>
-        </div>
-      )}
-
       {/* Pros & Cons for Indian Market */}
       <div className="pros-cons-section">
         <h3 className="section-title">Pros & Cons (Indian Market Perspective)</h3>
@@ -207,6 +195,215 @@ export default function LaptopComparison({ data, onRequestGeekMode }) {
         <div className="verdict-title">Final Verdict</div>
         <div className="verdict-content">{finalVerdict}</div>
       </div>
+
+      {/* Geek Mode Button */}
+      {comparisonMode === 'brief' && showGeekDetailsOption && !showingGeekMode && (
+        <div className="geek-mode-section">
+          <button className="geek-mode-btn" onClick={handleGeekModeRequest}>
+            🤓 Show Geek Details (Technical Deep Dive)
+          </button>
+          <p className="geek-mode-hint">
+            Get detailed specs, gaming FPS, rendering times, real-world battery tests, and more!
+          </p>
+        </div>
+      )}
+
+      {/* Geek Details Section */}
+      {geekDetails && (
+        <div className="geek-details-section">
+          <h3 className="section-title">🤓 Geek Mode: Real-World Performance</h3>
+
+          <div className="geek-details-grid">
+            {/* Laptop 1 Geek Details */}
+            <div className="geek-details-card">
+              <div className="geek-details-header">{laptop1.name}</div>
+
+              {/* CPU & GPU Details */}
+              <div className="geek-section">
+                <div className="geek-section-title">⚡ Processor & Graphics</div>
+                <div className="geek-item">
+                  <span className="geek-label">CPU:</span>
+                  <span className="geek-value">{geekDetails.laptop1.cpuDetails}</span>
+                </div>
+                <div className="geek-item">
+                  <span className="geek-label">GPU:</span>
+                  <span className="geek-value">{geekDetails.laptop1.gpuDetails}</span>
+                </div>
+              </div>
+
+              {/* Gaming Performance */}
+              {geekDetails.laptop1.gamingPerformance?.applicable && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🎮 Gaming Performance (FPS)</div>
+                  <div className="gaming-fps-grid">
+                    {geekDetails.laptop1.gamingPerformance.games.map((game, idx) => (
+                      <div key={idx} className="fps-item">
+                        <div className="game-title">{game.title}</div>
+                        <div className="game-settings">{game.settings}</div>
+                        <div className="game-fps">{game.fps}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Creative Performance */}
+              {geekDetails.laptop1.creativePerformance && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🎨 Creative Workloads</div>
+                  {geekDetails.laptop1.creativePerformance.premierePro && (
+                    <div className="geek-item">
+                      <span className="geek-label">Premiere Pro:</span>
+                      <span className="geek-value">{geekDetails.laptop1.creativePerformance.premierePro}</span>
+                    </div>
+                  )}
+                  {geekDetails.laptop1.creativePerformance.blenderBMW && (
+                    <div className="geek-item">
+                      <span className="geek-label">Blender:</span>
+                      <span className="geek-value">{geekDetails.laptop1.creativePerformance.blenderBMW}</span>
+                    </div>
+                  )}
+                  {geekDetails.laptop1.creativePerformance.photoshop && (
+                    <div className="geek-item">
+                      <span className="geek-label">Photoshop:</span>
+                      <span className="geek-value">{geekDetails.laptop1.creativePerformance.photoshop}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Productivity Metrics */}
+              {geekDetails.laptop1.productivityMetrics && (
+                <div className="geek-section">
+                  <div className="geek-section-title">💼 Productivity</div>
+                  <div className="geek-item">
+                    <span className="geek-label">Boot Time:</span>
+                    <span className="geek-value">{geekDetails.laptop1.productivityMetrics.bootTime}</span>
+                  </div>
+                  <div className="geek-item">
+                    <span className="geek-label">Multitasking:</span>
+                    <span className="geek-value">{geekDetails.laptop1.productivityMetrics.multitasking}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Thermals */}
+              {geekDetails.laptop1.thermalPerformance && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🌡️ Thermals & Noise</div>
+                  <div className="geek-item">
+                    <span className="geek-value thermal-info">{geekDetails.laptop1.thermalPerformance}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Battery Life */}
+              {geekDetails.laptop1.realWorldBattery && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🔋 Real-World Battery</div>
+                  <div className="geek-item">
+                    <span className="geek-value battery-info">{geekDetails.laptop1.realWorldBattery}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Laptop 2 Geek Details */}
+            <div className="geek-details-card">
+              <div className="geek-details-header">{laptop2.name}</div>
+
+              {/* CPU & GPU Details */}
+              <div className="geek-section">
+                <div className="geek-section-title">⚡ Processor & Graphics</div>
+                <div className="geek-item">
+                  <span className="geek-label">CPU:</span>
+                  <span className="geek-value">{geekDetails.laptop2.cpuDetails}</span>
+                </div>
+                <div className="geek-item">
+                  <span className="geek-label">GPU:</span>
+                  <span className="geek-value">{geekDetails.laptop2.gpuDetails}</span>
+                </div>
+              </div>
+
+              {/* Gaming Performance */}
+              {geekDetails.laptop2.gamingPerformance?.applicable && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🎮 Gaming Performance (FPS)</div>
+                  <div className="gaming-fps-grid">
+                    {geekDetails.laptop2.gamingPerformance.games.map((game, idx) => (
+                      <div key={idx} className="fps-item">
+                        <div className="game-title">{game.title}</div>
+                        <div className="game-settings">{game.settings}</div>
+                        <div className="game-fps">{game.fps}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Creative Performance */}
+              {geekDetails.laptop2.creativePerformance && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🎨 Creative Workloads</div>
+                  {geekDetails.laptop2.creativePerformance.premierePro && (
+                    <div className="geek-item">
+                      <span className="geek-label">Premiere Pro:</span>
+                      <span className="geek-value">{geekDetails.laptop2.creativePerformance.premierePro}</span>
+                    </div>
+                  )}
+                  {geekDetails.laptop2.creativePerformance.blenderBMW && (
+                    <div className="geek-item">
+                      <span className="geek-label">Blender:</span>
+                      <span className="geek-value">{geekDetails.laptop2.creativePerformance.blenderBMW}</span>
+                    </div>
+                  )}
+                  {geekDetails.laptop2.creativePerformance.photoshop && (
+                    <div className="geek-item">
+                      <span className="geek-label">Photoshop:</span>
+                      <span className="geek-value">{geekDetails.laptop2.creativePerformance.photoshop}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Productivity Metrics */}
+              {geekDetails.laptop2.productivityMetrics && (
+                <div className="geek-section">
+                  <div className="geek-section-title">💼 Productivity</div>
+                  <div className="geek-item">
+                    <span className="geek-label">Boot Time:</span>
+                    <span className="geek-value">{geekDetails.laptop2.productivityMetrics.bootTime}</span>
+                  </div>
+                  <div className="geek-item">
+                    <span className="geek-label">Multitasking:</span>
+                    <span className="geek-value">{geekDetails.laptop2.productivityMetrics.multitasking}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Thermals */}
+              {geekDetails.laptop2.thermalPerformance && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🌡️ Thermals & Noise</div>
+                  <div className="geek-item">
+                    <span className="geek-value thermal-info">{geekDetails.laptop2.thermalPerformance}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Battery Life */}
+              {geekDetails.laptop2.realWorldBattery && (
+                <div className="geek-section">
+                  <div className="geek-section-title">🔋 Real-World Battery</div>
+                  <div className="geek-item">
+                    <span className="geek-value battery-info">{geekDetails.laptop2.realWorldBattery}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

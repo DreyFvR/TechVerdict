@@ -62,10 +62,15 @@ function extractProductNames(message) {
 
 export async function POST(req) {
   try {
-    const { message, category } = await req.json();
+    const { message, category, geekMode } = await req.json();
 
     // Default to smartphone if no category specified
     const selectedCategory = category || 'smartphone';
+
+    // If geek mode is requested for laptops, add instruction to include geekDetails
+    const geekModeInstruction = (geekMode && selectedCategory === 'laptop')
+      ? '\n\nIMPORTANT: User has requested GEEK MODE. You MUST include the "geekDetails" object with full real-world performance metrics including gaming FPS, rendering times, thermals, and battery tests as specified in the DETAILED/GEEK MODE section.'
+      : '';
 
     // Extract product names if it's a comparison request
     const products = extractProductNames(message);
@@ -100,6 +105,7 @@ ${JSON.stringify(pricingData, null, 2)}
 ` : ''}
 
 USER QUERY: ${message}
+${geekModeInstruction}
 
 Remember to respond ONLY with valid JSON. No markdown, no code blocks, just pure JSON.`;
 
