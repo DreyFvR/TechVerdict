@@ -24,8 +24,8 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState("smartphone"); // smartphone or laptop
   const [chatHistory, setChatHistory] = useState([]);
-  const [currentChatId, setCurrentChatId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const chatMessagesRef = useRef(null);
 
   // Load chat history from localStorage on mount
@@ -215,11 +215,11 @@ export default function Page() {
   return (
     <div className="app-container">
       {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header" onClick={() => setSidebarOpen(false)}>
           <div className="logo">⚡</div>
           <span className="sidebar-title">My Chats</span>
-          <div className="menu-icon">☰</div>
+          <div className="menu-icon" onClick={(e) => { e.stopPropagation(); setSidebarOpen(false); }}>✕</div>
         </div>
 
         <div className="search-container">
@@ -297,6 +297,7 @@ export default function Page() {
       <main className="main-content">
         <header className="chat-header">
           <div className="chat-header-left">
+            <div className="menu-icon mobile-only" onClick={() => setSidebarOpen(true)}>☰</div>
             <span className="chat-name">Abhi GPT</span>
           </div>
         </header>
@@ -394,21 +395,29 @@ export default function Page() {
             <>
               {messages.map((msg, i) => (
                 <div key={i} className={`message ${msg.role}`}>
-                  {msg.isComparison ? (
-                    msg.data.phone1 ? (
-                      <PhoneComparison data={msg.data} />
+                  <div className="message-avatar">
+                    {msg.role === 'user' ? '👤' : '🤖'}
+                  </div>
+                  <div className="message-container">
+                    {msg.isComparison ? (
+                      msg.data.phone1 ? (
+                        <PhoneComparison data={msg.data} />
+                      ) : (
+                        <LaptopComparison data={msg.data} onRequestGeekMode={handleGeekModeRequest} />
+                      )
                     ) : (
-                      <LaptopComparison data={msg.data} onRequestGeekMode={handleGeekModeRequest} />
-                    )
-                  ) : (
-                    <div className="message-content">{msg.text}</div>
-                  )}
+                      <div className="message-content">{msg.text}</div>
+                    )}
+                  </div>
                 </div>
               ))}
               {loading && (
                 <div className="message bot loading">
-                  <div className="message-content">
-                    {category === 'smartphone' ? 'Analyzing phones and comparing...' : 'Analyzing laptops and comparing...'}
+                  <div className="message-avatar">🤖</div>
+                  <div className="message-container">
+                    <div className="message-content">
+                      {category === 'smartphone' ? 'Analyzing phones and comparing...' : 'Analyzing laptops and comparing...'}
+                    </div>
                   </div>
                 </div>
               )}
