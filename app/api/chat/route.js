@@ -3,30 +3,40 @@ import { fetchPhoneImages } from "../utils/imageAPI.js";
 import { PHONE_SYSTEM_PROMPT } from "../utils/phonePrompt.js";
 import { LAPTOP_SYSTEM_PROMPT } from "../utils/laptopPrompt.js";
 
-// Function to fetch real-time pricing from multiple sources
-async function fetchIndianPricing(phone1, phone2) {
-  // Note: In production, you'd integrate with actual APIs
-  // For now, we'll use web search or mock data
-  // You can integrate with:
-  // - Flipkart API
-  // - Amazon Product Advertising API
-  // - PriceAPI.in
-  // - Web scraping services
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
+const MODEL_NAME = "gemini-2.5-flash";
+const REQUEST_TIMEOUT_MS = 25000;
+
+let cachedModel;
+
+function getModel() {
+  if (cachedModel) return cachedModel;
+
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("Missing GEMINI_API_KEY");
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  cachedModel = genAI.getGenerativeModel({
+    model: MODEL_NAME,
+    generationConfig: {
+      temperature: 0.45,
+      topP: 0.8,
+      topK: 32,
+      responseMimeType: "application/json",
+    },
+  });
+
+  return cachedModel;
+}
+
+async function fetchIndianPricing() {
   try {
-    // Placeholder for real API integration
-    // This is where you'd make actual API calls
     return {
-      phone1: {
-        flipkart: null,
-        amazon: null,
-        available: false
-      },
-      phone2: {
-        flipkart: null,
-        amazon: null,
-        available: false
-      }
+      phone1: { flipkart: null, amazon: null, available: false },
+      phone2: { flipkart: null, amazon: null, available: false },
     };
   } catch (error) {
     console.error("Error fetching pricing:", error);
@@ -34,12 +44,7 @@ async function fetchIndianPricing(phone1, phone2) {
   }
 }
 
-// Function to extract phone/laptop names from user query
 function extractProductNames(message) {
-  // Simple extraction - in production, use NER or better parsing
-  const lowerMessage = message.toLowerCase();
-
-  // Common patterns: "compare X and Y", "X vs Y", "difference between X and Y"
   const patterns = [
     /compare\s+(.+?)\s+(?:and|vs|with)\s+(.+?)(?:\?|$|\.)/i,
     /(.+?)\s+vs\s+(.+?)(?:\?|$|\.)/i,
@@ -60,109 +65,122 @@ function extractProductNames(message) {
   return null;
 }
 
+function timeoutPromise(ms) {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("Request timed out")), ms);
+  });
+}
+
+function parseModelJson(text) {
+  let cleaned = String(text || "")
+    .replace(/```json\s*/g, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) cleaned = jsonMatch[0];
+
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
+  cleaned = cleaned.replace(/,(\s*[}\]])/g, "$1");
+
+  try {
+    return { parsed: JSON.parse(cleaned), rawText: cleaned };
+  } catch (error) {
+    console.error("JSON parse error:", error);
+    console.error("Problematic reply:", cleaned.slice(0, 500));
+    return {
+      parsed: {
+        type: "text",
+        message: cleaned || "I could not generate a readable response. Please try again.",
+      },
+      rawText: cleaned,
+    };
+  }
+}
+
+function jsonResponse(body, status = 200) {
+  return Response.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export async function POST(req) {
   try {
     const { message, category, geekMode } = await req.json();
+    const userMessage = typeof message === "string" ? message.trim() : "";
 
-    // Default to smartphone if no category specified
-    const selectedCategory = category || 'smartphone';
-
-    // If geek mode is requested for laptops, add instruction to include geekDetails
-    const geekModeInstruction = (geekMode && selectedCategory === 'laptop')
-      ? '\n\nIMPORTANT: User has requested GEEK MODE. You MUST include the "geekDetails" object with full real-world performance metrics including gaming FPS, rendering times, thermals, and battery tests as specified in the DETAILED/GEEK MODE section.'
-      : '';
-
-    // Extract product names if it's a comparison request
-    const products = extractProductNames(message);
-
-    // Fetch real-time pricing if products are detected (only for phones for now)
-    let pricingData = null;
-    let phoneImages = null;
-    if (products && selectedCategory === 'smartphone') {
-      pricingData = await fetchIndianPricing(products.product1, products.product2);
-      phoneImages = await fetchPhoneImages(products.product1, products.product2);
+    if (!userMessage) {
+      return jsonResponse({ error: "Message is required" }, 400);
     }
 
-    // Choose the right system prompt based on category
+    if (userMessage.length > 1200) {
+      return jsonResponse({ error: "Message is too long" }, 413);
+    }
+
+    const selectedCategory = category === "laptop" ? "laptop" : "smartphone";
+
+    const geekModeInstruction = (geekMode && selectedCategory === "laptop")
+      ? '\n\nIMPORTANT: User has requested GEEK MODE. You MUST include the "geekDetails" object with full real-world performance metrics including gaming FPS, rendering times, thermals, and battery tests as specified in the DETAILED/GEEK MODE section.'
+      : "";
+
+    const products = extractProductNames(userMessage);
+
+    let pricingData = null;
+    let phoneImages = null;
+    if (products && selectedCategory === "smartphone") {
+      [pricingData, phoneImages] = await Promise.all([
+        fetchIndianPricing(products.product1, products.product2),
+        fetchPhoneImages(products.product1, products.product2),
+      ]);
+    }
+
     const SYSTEM_PROMPT = selectedCategory === 'laptop' ? LAPTOP_SYSTEM_PROMPT : PHONE_SYSTEM_PROMPT;
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.8,
-        topK: 40,
-        responseMimeType: "application/json", // Force JSON output
-      }
-    });
-
-    // Construct the full prompt with system instructions
     const fullPrompt = `${SYSTEM_PROMPT}
 
 ${pricingData ? `REAL-TIME PRICING DATA (if available):
 ${JSON.stringify(pricingData, null, 2)}
 ` : ''}
 
-USER QUERY: ${message}
+USER QUERY: ${userMessage}
 ${geekModeInstruction}
 
 Remember to respond ONLY with valid JSON. No markdown, no code blocks, just pure JSON.`;
 
-    const result = await model.generateContent(fullPrompt);
-    let reply = result.response.text();
+    const result = await Promise.race([
+      getModel().generateContent(fullPrompt),
+      timeoutPromise(REQUEST_TIMEOUT_MS),
+    ]);
+    const reply = result.response.text();
+    const { parsed: parsedReply, rawText } = parseModelJson(reply);
 
-    // Enhanced JSON extraction and cleaning
-    let parsedReply;
-    try {
-      // Remove markdown code blocks
-      reply = reply.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
-      // Try to extract JSON if it's wrapped in text
-      const jsonMatch = reply.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        reply = jsonMatch[0];
-      }
-
-      // Remove any trailing commas before closing braces/brackets (invalid JSON)
-      reply = reply.replace(/,(\s*[}\]])/g, '$1');
-
-      // Remove any text before the first { or after the last }
-      const firstBrace = reply.indexOf('{');
-      const lastBrace = reply.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        reply = reply.substring(firstBrace, lastBrace + 1);
-      }
-
-      parsedReply = JSON.parse(reply);
-      console.log("Successfully parsed JSON response");
-    } catch (parseError) {
-      // If JSON parsing still fails, return as plain text
-      console.error("JSON parse error:", parseError);
-      console.error("Problematic reply:", reply.substring(0, 500));
-      parsedReply = {
-        type: "text",
-        message: reply
-      };
-    }
-
-    // Add phone images to the response if available (only for phones)
-    if (phoneImages && parsedReply.comparison && selectedCategory === 'smartphone') {
+    if (phoneImages && parsedReply.comparison && selectedCategory === "smartphone") {
       parsedReply.images = phoneImages;
     }
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       reply: parsedReply,
-      rawText: reply
-    }), {
-      headers: { "Content-Type": "application/json" },
-      status: 200,
+      rawText,
     });
   } catch (err) {
     console.error(err);
-    return new Response(
-      JSON.stringify({ error: "Failed to generate response" }),
-      { status: 500 }
-    );
+
+    if (err.message === "Request timed out") {
+      return jsonResponse({ error: "Request timed out" }, 408);
+    }
+
+    if (err.message === "Missing GEMINI_API_KEY") {
+      return jsonResponse({ error: "GEMINI_API_KEY is not configured" }, 500);
+    }
+
+    return jsonResponse({ error: "Failed to generate response" }, 500);
   }
 }

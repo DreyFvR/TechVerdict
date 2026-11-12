@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 export default function PhoneComparison({ data }) {
   if (!data || !data.comparison) {
     return null;
@@ -51,7 +53,7 @@ export default function PhoneComparison({ data }) {
       {hasExpectedSpecs && (
         <div className="unreleased-disclaimer">
           ⚠️ <strong>Note:</strong> One or both phones may not be officially released yet.
-          Specifications marked as "Expected" or "Approximate" are based on rumors, leaks,
+          Specifications marked as &quot;Expected&quot; or &quot;Approximate&quot; are based on rumors, leaks,
           and industry trends. Actual specs may vary upon official release.
         </div>
       )}
